@@ -22,3 +22,24 @@ jobs:
               repo: context.repo.repo,
               body: "🎉 感謝您建立此 Issue！我們已收到通知，維護團隊將儘速審查。"
             });
+            
+      - name: 偵測 Bug 標籤並標註高優先級
+        if: contains(github.event.issue.labels.*.name, 'bug')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // 自動為含有 bug 標籤的 Issue 追加 priority: high 標籤
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['priority: high']
+            });
+
+            // 於 Issue 內留下引導說明
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "⚠️ **偵測到 Bug 回報**：已自動標記為 `priority: high`，請確保提供系統環境與最小重現代碼。"
+            });
