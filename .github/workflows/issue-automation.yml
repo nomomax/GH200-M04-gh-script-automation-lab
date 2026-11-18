@@ -2,27 +2,39 @@ name: Learning GitHub Script
 
 on:
   issues:
-    types: [opened]
+    types: [opened, labeled]
 
-# 關鍵安全設定：授予 GITHUB_TOKEN 寫入 Issue 的權限
 permissions:
   issues: write
+  contents: read
 
 jobs:
-  comment:
+  triage:
     runs-on: ubuntu-latest
     steps:
-      - name: 自動回覆新建立的 Issue
+      - name: 檢出儲存庫代碼 (讀取範本所需)
+        uses: actions/checkout@v4
+
+      - name: 讀取 Markdown 範本並自動回覆
+        if: github.event.action == 'opened'
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "🎉 感謝您建立此 Issue！我們已收到通知，維護團隊將儘速審查。"
-            });
-            
+            const fs = require('fs');
+            const path = '.github/ISSUE_RESPONSES/comment.md';
+
+            if (fs.existsSync(path)) {
+              const issueBody = fs.readFileSync(path, 'utf8');
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: issueBody
+              });
+            } else {
+              core.setFailed(`找不到範本檔案：${path}`);
+            }
+
       - name: 偵測 Bug 標籤並標註高優先級
         if: contains(github.event.issue.labels.*.name, 'bug')
         uses: actions/github-script@v7
